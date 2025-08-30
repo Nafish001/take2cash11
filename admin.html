@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Take2Cash Admin Panel</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-auth.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body class="bg-gradient-to-b from-gray-100 to-gray-50 min-h-screen p-4">
+
+<h1 class="text-center text-3xl font-bold text-purple-700 mb-6">Take2Cash Admin Panel</h1>
+
+<!-- Admin Login -->
+<div id="adminLoginDiv" class="max-w-md mx-auto bg-white p-6 rounded-2xl shadow-lg">
+<h2 class="font-bold mb-4 text-xl text-purple-600">Admin Login</h2>
+<input id="adminEmail" placeholder="Admin Email" class="w-full border p-3 mb-3 rounded-lg focus:ring-2 focus:ring-purple-400">
+<input id="adminPass" type="password" placeholder="Admin Password" class="w-full border p-3 mb-3 rounded-lg focus:ring-2 focus:ring-purple-400">
+<button id="adminLoginBtn" class="w-full bg-purple-600 text-white p-3 rounded-lg mb-3 hover:bg-purple-700">Login as Admin</button>
+<div id="adminMsg" class="text-red-500 text-sm mt-1 text-center"></div>
+</div>
+
+<!-- Admin Panel -->
+<div id="adminPanel" class="hidden max-w-4xl mx-auto mt-6">
+<h2 class="text-xl font-bold text-purple-700 mb-4">Dashboard</h2>
+
+<!-- Withdraw Requests -->
+<div class="bg-white p-4 rounded-2xl shadow mb-4">
+<h3 class="font-bold text-purple-600 mb-2">Withdraw Requests</h3>
+<table class="w-full text-left table-auto border">
+<thead class="bg-purple-100">
+<tr>
+<th class="px-2 py-1 border">UID</th>
+<th class="px-2 py-1 border">Phone</th>
+<th class="px-2 py-1 border">Amount</th>
+<th class="px-2 py-1 border">Status</th>
+<th class="px-2 py-1 border">Action</th>
+</tr>
+</thead>
+<tbody id="withdrawTable" class="divide-y"></tbody>
+</table>
+</div>
+
+<!-- Deposit Requests -->
+<div class="bg-white p-4 rounded-2xl shadow mb-4">
+<h3 class="font-bold text-green-600 mb-2">Deposit Requests</h3>
+<table class="w-full text-left table-auto border">
+<thead class="bg-green-100">
+<tr>
+<th class="px-2 py-1 border">UID</th>
+<th class="px-2 py-1 border">Sender</th>
+<th class="px-2 py-1 border">Amount</th>
+<th class="px-2 py-1 border">Status</th>
+<th class="px-2 py-1 border">Action</th>
+</tr>
+</thead>
+<tbody id="depositTable" class="divide-y"></tbody>
+</table>
+</div>
+
+<!-- User Management -->
+<div class="bg-white p-4 rounded-2xl shadow mb-4">
+<h3 class="font-bold text-blue-600 mb-2">User Management</h3>
+<table class="w-full text-left table-auto border">
+<thead class="bg-blue-100">
+<tr>
+<th class="px-2 py-1 border">UID</th>
+<th class="px-2 py-1 border">Name</th>
+<th class="px-2 py-1 border">Balance</th>
+<th class="px-2 py-1 border">Active</th>
+<th class="px-2 py-1 border">Action</th>
+</tr>
+</thead>
+<tbody id="usersTable" class="divide-y"></tbody>
+</table>
+</div>
+
+<button id="adminLogoutBtn" class="w-full bg-red-500 text-white p-3 rounded-lg hover:bg-red-600 mb-6">Logout Admin</button>
+
+<script>
+// Firebase config
+var firebaseConfig = {
+    apiKey: "AIzaSyCf3PHTZHHBDvfx3Eeju4wRqGC0UNGfix4",
+    authDomain: "take2cashbot.firebaseapp.com",
+    projectId: "take2cashbot",
+    storageBucket: "take2cashbot.firebasestorage.app",
+    messagingSenderId: "1061709627457",
+    appId: "1:1061709627457:web:af16302a2d569641b186c0"
+};
+firebase.initializeApp(firebaseConfig);
+var db = firebase.firestore();
+
+const ADMIN_EMAIL='nafishrahman001@gmail.com';
+const ADMIN_PASS='nafish@@##1122';
+
+function showMsg(el,text){el.innerText=text;}
+
+// Admin login
+document.getElementById('adminLoginBtn').onclick=function(){
+    var email=document.getElementById('adminEmail').value;
+    var pass=document.getElementById('adminPass').value;
+    if(email===ADMIN_EMAIL && pass===ADMIN_PASS){
+        document.getElementById('adminLoginDiv').classList.add('hidden');
+        document.getElementById('adminPanel').classList.remove('hidden');
+        showMsg(document.getElementById('adminMsg'),'Admin logged in!');
+        loadWithdrawRequests();
+        loadDepositRequests();
+        loadUsers();
+    }else showMsg(document.getElementById('adminMsg'),'Invalid admin');
+};
+
+// Admin logout
+document.getElementById('adminLogoutBtn').onclick=function(){
+    document.getElementById('adminPanel').classList.add('hidden');
+    document.getElementById('adminLoginDiv').classList.remove('hidden');
+    showMsg(document.getElementById('adminMsg'),'Admin logged out');
+};
+
+// Load Withdraw Requests
+function loadWithdrawRequests(){
+    var wTable=document.getElementById('withdrawTable'); wTable.innerHTML='';
+    db.collection('withdraws').get().then(snap=>{
+        snap.forEach(doc=>{
+            var d=doc.data();
+            var tr=document.createElement('tr');
+            tr.innerHTML=`<td class="px-2 py-1 border">${d.uid}</td><td class="px-2 py-1 border">${d.phone}</td><td class="px-2 py-1 border">${d.amount}</td><td class="px-2 py-1 border">${d.status}</td><td class="px-2 py-1 border"><button class="bg-green-500 text-white px-2 py-1 rounded mr-1" onclick="approveWithdraw('${doc.id}')">Approve</button><button class="bg-red-500 text-white px-2 py-1 rounded" onclick="rejectWithdraw('${doc.id}')">Reject</button></td>`;
+            wTable.appendChild(tr);
+        });
+    });
+}
+
+// Load Deposit Requests
+function loadDepositRequests(){
+    var dTable=document.getElementById('depositTable'); dTable.innerHTML='';
+    db.collection('deposits').get().then(snap=>{
+        snap.forEach(doc=>{
+            var d=doc.data();
+            var tr=document.createElement('tr');
+            tr.innerHTML=`<td class="px-2 py-1 border">${d.uid}</td><td class="px-2 py-1 border">${d.sender}</td><td class="px-2 py-1 border">${d.amount}</td><td class="px-2 py-1 border">${d.status}</td><td class="px-2 py-1 border"><button class="bg-green-500 text-white px-2 py-1 rounded mr-1" onclick="approveDeposit('${doc.id}')">Approve</button><button class="bg-red-500 text-white px-2 py-1 rounded" onclick="rejectDeposit('${doc.id}')">Reject</button></td>`;
+            dTable.appendChild(tr);
+        });
+    });
+}
+
+// Load Users
+function loadUsers(){
+    var uTable=document.getElementById('usersTable'); uTable.innerHTML='';
+    db.collection('users').get().then(snap=>{
+        snap.forEach(doc=>{
+            var d=doc.data();
+            var tr=document.createElement('tr');
+            tr.innerHTML=`<td class="px-2 py-1 border">${doc.id}</td><td class="px-2 py-1 border">${d.name}</td><td class="px-2 py-1 border">${d.balance}</td><td class="px-2 py-1 border">${d.active}</td><td class="px-2 py-1 border"><button class="bg-blue-500 text-white px-2 py-1 rounded mr-1" onclick="toggleActive('${doc.id}',${d.active})">Toggle Active</button><button class="bg-yellow-500 text-white px-2 py-1 rounded" onclick="resetBalance('${doc.id}')">Reset Balance</button></td>`;
+            uTable.appendChild(tr);
+        });
+    });
+}
+
+// Approve / Reject Withdraw
+window.approveWithdraw=function(id){db.collection('withdraws').doc(id).update({status:'approved'}).then(loadWithdrawRequests);}
+window.rejectWithdraw=function(id){db.collection('withdraws').doc(id).update({status:'rejected'}).then(loadWithdrawRequests);}
+
+// Approve / Reject Deposit
+window.approveDeposit=function(id){
+    db.collection('deposits').doc(id).get().then(doc=>{
+        var d=doc.data();
+        db.collection('users').doc(d.uid).get().then(u=>{
+            var uData=u.data();
+            db.collection('users').doc(d.uid).update({balance:uData.balance+d.amount});
+            db.collection('deposits').doc(id).update({status:'approved'});
+            loadDepositRequests();
+        });
+    });
+}
+window.rejectDeposit=function(id){db.collection('deposits').doc(id).update({status:'rejected'}).then(loadDepositRequests);}
+
+// Toggle User Active
+window.toggleActive=function(uid,current){
+    db.collection('users').doc(uid).update({active:!current}).then(loadUsers);
+}
+
+// Reset User Balance
+window.resetBalance=function(uid){
+    db.collection('users').doc(uid).update({balance:0}).then(loadUsers);
+}
+</script>
+
+</body>
+</html>
